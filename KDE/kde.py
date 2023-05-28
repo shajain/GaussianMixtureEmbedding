@@ -9,7 +9,7 @@ from scipy.special import logsumexp
 
 
 def bandwidth(n):
-    bw = 1.06 * n ** (-0.2)
+    bw = 1.06 * (n ** (-0.2))
     return bw
 
 def kde(x,bw=None):

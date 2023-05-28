@@ -6,7 +6,7 @@ from scipy.stats import pearsonr
 from KDE.kde import bandwidth
 from KDE.kde import kde
 from GaussianEmbedding.GaussianAE import GaussianAE
-from GMM.classes import GMM
+from GMMOld.classes import GMM
 from itertools import combinations
 from scipy.stats import norm
 from PCA.pca import pca
@@ -20,8 +20,8 @@ class GaussianMixAE(GaussianAE):
         super(GaussianMixAE, self).__init__(input_dim, latent_dim, **kwargs)
         self.bws = [bandwidth(self.batchSize)]*nComps
         self.nComps = nComps
-        if 'GMM' in kwargs:
-            self.GMM = kwargs['GMM']
+        if 'GMMOld' in kwargs:
+            self.GMM = kwargs['GMMOld']
         else:
             self.GMM = GMM(nComps, latent_dim, GaussianMixAE.iterGMM, spherical=True)
 
@@ -75,7 +75,7 @@ class GaussianMixAE(GaussianAE):
         #     xx = self.x[ix, :]
         #     enc = self.encoding(xx)
         #     #pdb.set_trace()
-        #     self.GMM.run(enc)
+        #     self.GMMOld.run(enc)
         #     self.updateGMMPars()
         #     self.R = self.responsibility_x(self.x)
         # Remove the six lines below for the actual algorithm
@@ -185,9 +185,9 @@ class GaussianMixAE(GaussianAE):
         return lossRec + lossGaussian + lossCorr, lossRec_c, lossGaussian_c, lossCorr_c
 
     def updateGMMPars(self):
-        # self.means = [comp.mu for comp in self.GMM.model.comps]
-        # self.stds = [np.sqrt(np.diag(comp.cov)) for comp in self.GMM.model.comps]
-        # self.pi = self.GMM.model.pi
+        # self.means = [comp.mu for comp in self.GMMOld.model.comps]
+        # self.stds = [np.sqrt(np.diag(comp.cov)) for comp in self.GMMOld.model.comps]
+        # self.pi = self.GMMOld.model.pi
         #self.means = [np.zeros(self.latent_dim)]
         #self.stds = [np.ones(self.latent_dim)]
         self.means = [self.mean_enc]
@@ -196,13 +196,13 @@ class GaussianMixAE(GaussianAE):
 
     def posterior(self, x):
         # enc = self.encoding(x)
-        # p = self.GMM.model.posterior(enc)
+        # p = self.GMMOld.model.posterior(enc)
         p = np.ones(x.shape[0])
         return p
 
     def responsibility_x(self, x):
         #enc = self.encoding(x)
-        #R_x = self.GMM.model.responsibility(enc)
+        #R_x = self.GMMOld.model.responsibility(enc)
         R_x = np.ones((x.shape[0], 1))
         return R_x
 
@@ -211,7 +211,7 @@ class GaussianMixAE(GaussianAE):
         kwargs['encoder'] = self.copyEncoder()
         kwargs['decoder'] = self.copyDecoder()
         #pdb.set_trace()
-        kwargs['GMM'] = self.GMM.copy()
+        kwargs['GMMOld'] = self.GMM.copy()
         GMAE = GaussianMixAE(self.input_dim, self.latent_dim, self.nComps, **kwargs)
         GMAE.mean_enc = np.copy(self.mean_enc)
         GMAE.std_enc = np.copy(self.std_enc)

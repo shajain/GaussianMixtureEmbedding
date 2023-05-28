@@ -126,10 +126,10 @@ class NormalMixDG(DataGenerator):
 class MVNormalMixDG(DataGenerator):
 
     def __init__(self, mu_pos, sig_pos, p_pos, mu_neg, sig_neg, p_neg, alpha, n_pos, n_ul):
-        components_pos = [mvn(mean=mu, cov=sig) for (mu, sig) in zip(mu_pos, sig_pos)]
-        components_neg = [mvn(mean=mu, cov=sig) for (mu, sig) in zip(mu_neg, sig_neg)]
-        dist_pos = mixture(components_pos, p_pos)
-        dist_neg = mixture(components_neg, p_neg)
+        self.components_pos = [mvn(mean=mu, cov=sig) for (mu, sig) in zip(mu_pos, sig_pos)]
+        self.components_neg = [mvn(mean=mu, cov=sig) for (mu, sig) in zip(mu_neg, sig_neg)]
+        dist_pos = mixture(self.components_pos, p_pos)
+        dist_neg = mixture(self.components_neg, p_neg)
         super(MVNormalMixDG, self).__init__(dist_p=dist_pos, dist_n=dist_neg, alpha=alpha, n_p=n_pos, n_u=n_ul)
 
 

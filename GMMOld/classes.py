@@ -4,7 +4,7 @@ import numpy as np
 from scipy.stats import norm
 from scipy.stats import mvn
 from sklearn.cluster import KMeans
-from GMM.model import UDist, PUDist, PNUDist
+from GMMOld.model import UDist, PUDist, PNUDist
 
 
 class GMM:

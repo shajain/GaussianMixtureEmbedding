@@ -17,10 +17,6 @@ from types import SimpleNamespace as SN
 from data.datagen import MVNormalMixDG
 from data.datagen import DataGenerator
 from itertools import combinations
-from plots.CIEllipse import CIEllipse
-from matplotlib.patches import Ellipse
-from data.utils import AUCFromDistributions
-
 
 
 class NormalMixRandomParameters:
@@ -213,13 +209,11 @@ class NormalMixRandomParameters:
 
 
 class NormalMixPNParameters:
-# Used to gnerate PN data with desired AUC and irreducibility.\
+# Used to gnerate PN data with desired AUC and irreducibility.
 # The P and N distributions are mixtures of gaussians with equal number of components
     def __init__(self, dim, max_comps):
         self.dim = dim
         self.max_comps = max_comps
-        #self.aucpn_range = aucpn_range
-        #self.irr_vec = irr_vec
         #self.n_comps_pos = randint(1, max_comps)
         #self.n_comps_neg = randint(1, max_comps)
         self.n_comps_pos = max_comps
@@ -245,15 +239,12 @@ class NormalMixPNParameters:
         self.alpha = random()
         self.updateDataGenerator()
 
-    def computePNDataMetrics(self, aucpn_range, irr_vec):
-        irr_pr = irr_vec[1]
+    def computePNDataMetrics(self):
+        epsilon = 0.05
         n = 10000
-        x, y, _, x_p, x_n = self.dg.pn_data(n, 0.5)[0:5]
+        x, y, _, x_p = self.dg.pn_data(n, 0.5)[0:4]
         posterior_pos = self.dg.pn_posterior_balanced(x_p)
-        posterior_neg = 1-self.dg.pn_posterior_balanced(x_n)
-        irr_pos = np.mean(np.cast['int32'](posterior_pos > irr_pr).flatten())
-        irr_neg = np.mean(np.cast['int32'](posterior_neg > irr_pr).flatten())
-        irreducibility = [irr_pos, irr_neg]
+        irreducibility = np.mean(np.cast['int32'](posterior_pos > 1-epsilon).flatten())
         posterior_x = self.dg.pn_posterior_balanced(x)
         fpr, tpr, thresholds = metrics.roc_curve(y, posterior_x)
         aucpn = metrics.auc(fpr, tpr)
@@ -272,28 +263,28 @@ class NormalMixPNParameters:
     #     #pdb.set_trace()
     #     return xy, x, y, pos, neg, dg
 
-    def perturb2SatisfyMetrics(self, aucpn_range, irr_vec):
-        #irr_mid = np.mean(irr_range, axis=0)
-        #aucpn_min = min_aucpn(irr_mid)
+    def perturb2SatisfyMetrics(self, irr_range, aucpn_range):
+        irr_mid = np.mean(irr_range, axis=0)
+        aucpn_min = min_aucpn(irr_mid)
         # if aucpn_range[0] < aucpn_min:
         #    raise ValueError('Irreducibility range and AUCPN range are not compatible:\n',
         #                      'AUCPN should be above', aucpn_min, 'for midpoint irreducibility of', irr_mid)
-        while not self.isMetricSatisfied(aucpn_range, irr_vec):
+        while not self.isMetricSatisfied(irr_range, aucpn_range):
             self.markRandomParForChange()
             #print(self.changeInfo)
             if self.muMarked():
-                self.perturbMu(aucpn_range, irr_vec)
+                self.perturbMu(irr_range, aucpn_range)
             else:
                 if self.pMarked():
-                    self.perturbProportion(aucpn_range, irr_vec)
+                    self.perturbProportion(irr_range, aucpn_range)
                 else:
                     if random() <= 0.5:
-                        self.perturbSigmaShape(aucpn_range, irr_vec)
+                        self.perturbSigmaShape(irr_range, aucpn_range)
                     else:
-                        self.perturbSigmaScale(aucpn_range, irr_vec)
+                        self.perturbSigmaScale(irr_range, aucpn_range)
             self.commitChange()
 
-    def perturbMu(self,  aucpn_range, irr_vec):
+    def perturbMu(self, irr_range, aucpn_range):
         print('Mu Perturb')
         c = 1
         delta = np.array([2 * random( ) - 1 for i in np.arange(self.dim)])
@@ -301,28 +292,28 @@ class NormalMixPNParameters:
         mu = self.getMarkedParOldValue()
         up = 1.0
         self.proposeChange(mu + up * delta)
-        while not self.isMetricUBSatisfied(aucpn_range, irr_vec):
+        while not self.isMetricUBSatisfied(irr_range, aucpn_range):
             up = up/2
             self.proposeChange(mu + up * delta)
 
-    def perturbSigmaShape(self,  aucpn_range, irr_vec):
+    def perturbSigmaShape(self, irr_range, aucpn_range):
         print('Sigma Shape Perturb')
         newsigma = spd(self.dim)
         sigma = self.getMarkedParOldValue()
         a = 1.0
         self.proposeChange((1-a) * sigma + a * newsigma)
-        while (not (self.isMetricUBSatisfied(aucpn_range, irr_vec) and self.acceptableSigma((1-a) * sigma + a * newsigma))):
+        while (not (self.isMetricUBSatisfied(irr_range, aucpn_range) and self.acceptableSigma((1-a) * sigma + a * newsigma))):
             a = a/2
             self.proposeChange((1-a) * sigma + a * newsigma)
         if not self.acceptableSigma((1-a) * sigma + a * newsigma):
             self.revert2OldValue()
 
-    def perturbSigmaScale(self, aucpn_range, irr_vec):
+    def perturbSigmaScale(self, irr_range, aucpn_range):
         print('Sigma Scale Perturb')
         sigma = self.getMarkedParOldValue()
         a = 0.5
         self.proposeChange(a * sigma)
-        while (not (self.isMetricUBSatisfied(aucpn_range, irr_vec) and self.acceptableSigma(a * sigma))):
+        while (not (self.isMetricUBSatisfied(irr_range, aucpn_range) and self.acceptableSigma(a * sigma))):
             a = 1 + (a - 1)/2
             print(a)
             #print('metric:', self.isMetricUBSatisfied(irr_range, aucpn_range))
@@ -331,7 +322,7 @@ class NormalMixPNParameters:
         if not self.acceptableSigma(a * sigma):
             self.revert2OldValue()
 
-    def perturbProportion(self, aucpn_range, irr_vec):
+    def perturbProportion(self, irr_range, aucpn_range):
         print('Perturb Proportion')
         prop = self.getMarkedParOldValue( )
         a = 1
@@ -341,7 +332,7 @@ class NormalMixPNParameters:
             prop_1 = dirichlet(np.ones(self.n_comps_neg)).rvs([])
         new_prop = (1 - a) * prop + a * prop_1
         self.proposeChange(new_prop)
-        while not (self.isMetricUBSatisfied(aucpn_range, irr_vec)):
+        while not (self.isMetricUBSatisfied(irr_range, aucpn_range)):
             a = a/2
             new_prop = (1 - a) * prop + a * prop_1
             # print(a)
@@ -360,28 +351,18 @@ class NormalMixPNParameters:
         #ratios[:] = 1
         return all(ratios >= 0.5) and all(ratios <= 2.0)
 
-    def isMetricSatisfied(self, aucpn_range, irr_vec):
-        #aucpn_range = self.aucpn_range
-        anchorSetProp = irr_vec[0]
-        metrics = self.computePNDataMetrics(aucpn_range, irr_vec)
-        irr_pos = metrics['irreducibility'][0]
-        irr_neg = metrics['irreducibility'][1]
-        irr_satisfied_pos = anchorSetProp <= irr_pos
-        irr_satisfied_neg = anchorSetProp <= irr_neg
+    def isMetricSatisfied(self, irr_range, aucpn_range):
+        metrics = self.computePNDataMetrics()
+        irr_satisfied = irr_range[0] <= metrics['irreducibility'] <= irr_range[1]
         auc_satisfied = aucpn_range[0] <= metrics['aucpn'] <= aucpn_range[1]
-        print('isMetricSatisfied' + str(metrics))
-        print('anchorSetProp' + str(anchorSetProp))
-        return irr_satisfied_pos and auc_satisfied and irr_satisfied_neg
+        print(metrics)
+        return irr_satisfied and auc_satisfied
 
-    def isMetricUBSatisfied(self, aucpn_range, irr_vec):
-        #anchorSetProp = irr_vec[0]
-        metrics = self.computePNDataMetrics(aucpn_range, irr_vec)
-        irr_pos = metrics['irreducibility'][0]
-        irr_neg = metrics['irreducibility'][1]
-        #irr_satisfied_pos = irr_pos >= anchorSetProp
-        #irr_satisfied_neg = irr_neg >= anchorSetProp
+    def isMetricUBSatisfied(self, irr_range, aucpn_range):
+        metrics = self.computePNDataMetrics()
+        irr_satisfied = metrics['irreducibility'] <= irr_range[1]
         auc_satisfied = metrics['aucpn'] <= aucpn_range[1]
-        return auc_satisfied
+        return irr_satisfied and auc_satisfied
 
     def proposeChange(self, newValue):
         self.changeInfo['changed'] = True
@@ -462,8 +443,6 @@ class NormalMixPNParameters2:
     def __init__(self, dim, nComps):
         self.dim = dim
         self.nComps = nComps
-        #self.aucpn_range = aucpn_range
-        #self.irr_vec = irr_vec
         self.NormalPNPars = [NormalMixPNParameters(dim, 1) for i in np.arange(nComps)]
         self.alpha = random()
         self.p_pos = dirichlet(np.ones(self.nComps)).rvs([])
@@ -471,152 +450,24 @@ class NormalMixPNParameters2:
         self.updateDataGenerator()
 
 
-    def perturb2SatisfyMetrics(self,  aucpn_range,  irr_vec):
-        R = 5
-        anchorSetProp = irr_vec[0]
-        [self.NormalPNPars[i].perturb2SatisfyMetrics(aucpn_range,  irr_vec) for i in np.arange(self.nComps)]
-        self.updateDataGenerator()
+    def perturb2SatisfyMetrics(self, irr_range, aucpn_range):
+        [self.NormalPNPars[i].perturb2SatisfyMetrics(irr_range, aucpn_range) for i in np.arange(self.nComps)]
         #pdb.set_trace()
-        if self.nComps > 1:
-            for i in np.arange(1, self.nComps):
-                pair1 = self.NormalPNPars[i]
-                aucs = np.array([self.betweenPairAUC(i, j) for j in range(i)])
-                irr_pos, irr_neg = self.irreducibility(irr_vec, i+1)[0:2]
+        for i in np.arange(self.nComps):
+            pair1 = self.NormalPNPars[i]
+            aucs = np.array([self.betweenPairAUC(i, j) for j in range(self.nComps) if j != i])
+            #pdb.set_trace()
+            while np.any(aucs < 0.7):
+                #randomUnitVec = np.array([16/np.sqrt(self.dim) * random() - 8/np.sqrt(self.dim) for i in np.arange(self.dim)])
+                randomUnitVec = np.array([2 * random() - 1 for i in np.arange(self.dim)])
+                randomUnitVec = 0.5 * randomUnitVec / np.sqrt(self.dim)
+                randomUnitVec = randomUnitVec/np.linalg.norm(randomUnitVec)
+                pair1.mu_pos[0] = pair1.mu_pos[0] + randomUnitVec
+                pair1.mu_neg[0] = pair1.mu_neg[0] + randomUnitVec
+                aucs = np.array([self.betweenPairAUC(i, j) for j in range(self.nComps) if j != i])
                 #pdb.set_trace()
-                print('i loop')
-                print('aucs' + str(np.min(aucs)))
-                print('irr_pos' + str(irr_pos))
-                print('irr_neg' + str(irr_neg))
-                if np.min(irr_pos) < anchorSetProp or np.min(irr_neg) < anchorSetProp or np.min(aucs) < aucpn_range[0]:
-                    mu_pos = np.copy(pair1.mu_pos[0])
-                    mu_neg = np.copy(pair1.mu_neg[0])
-                    mu_pos_best = mu_pos
-                    mu_neg_best = mu_neg
-                    bestAUC = 1
-                    for j in np.arange(R):
-                        pair1.mu_pos[0] = np.copy(mu_pos)
-                        pair1.mu_neg[0] = np.copy(mu_neg)
-                        irr_pos, irr_neg = self.irreducibility(irr_vec, i + 1)[0:2]
-                        aucs = np.array([self.betweenPairAUC(i, j) for j in range(i)])
-                        vec = np.array([2 * random() - 1 for i in np.arange(self.dim)])
-                        vec = 0.5 * vec / np.sqrt(self.dim)
-                        vec = vec / np.linalg.norm(vec)
-                        #pdb.set_trace()
-                        while np.min(irr_pos) < anchorSetProp or np.min(irr_neg) < anchorSetProp \
-                                or np.min(aucs) < aucpn_range[0]:
-                            pair1.mu_pos[0] = pair1.mu_pos[0] + vec
-                            pair1.mu_neg[0] = pair1.mu_neg[0] + vec
-                            irr_pos, irr_neg = self.irreducibility(irr_vec, i+1)[0:2]
-                            aucs = np.array([self.betweenPairAUC(i, j) for j in range(i)])
-                            print('first loop in j loop')
-                            print('aucs' + str(np.min(aucs)))
-                            print('irr_pos' + str(irr_pos))
-                            print('irr_neg' + str(irr_neg))
-                            #pdb.set_trace()
-                        #pdb.set_trace()
-                        ix = np.random.choice(i,1)
-                        pair2 = self.NormalPNPars[ix[0]]
-                        mean1 = (pair1.mu_pos[0] + pair1.mu_neg[0])/2
-                        mean2 = (pair2.mu_pos[0] + pair2.mu_neg[0])/2
-                        vec2 = mean2-mean1
-                        a1 = 0
-                        a2 = 1
-                        aa1 = 0
-                        iii = 1
-                        while np.min(aucs) < aucpn_range[0] or np.min(aucs) > aucpn_range[1] or \
-                                np.min(irr_pos) < anchorSetProp or np.min(irr_neg) < anchorSetProp:
-                            if np.abs(a1 - a2) < 10**-5:
-                                break
-                            aa2 = (a1 + a2)/2
-                            pair1.mu_pos[0] = pair1.mu_pos[0] + (aa2 - aa1)*vec2
-                            pair1.mu_neg[0] = pair1.mu_neg[0] + (aa2 - aa1)*vec2
-                            aucs = np.array([self.betweenPairAUC(i, j) for j in range(i)])
-                            irr_pos, irr_neg = self.irreducibility(irr_vec, i + 1)[0:2]
-                            aa1 = aa2
-                            print('second loop in j loop')
-                            print('aucs' + str(np.min(aucs)))
-                            print('irr_pos' + str(irr_pos))
-                            print('irr_neg' + str(irr_neg))
-                            if np.min(aucs) < aucpn_range[0] or np.min(irr_pos) < anchorSetProp or \
-                                    np.min(irr_neg) < anchorSetProp:
-                                a2 = aa2
-                            else:
-                                a1 = aa2
-                            iii = iii + 1
-                            if iii == 1000:
-                                pdb.set_trace()
 
-                        #pdb.set_trace()
-                        print('after two j loops')
-                        print('aucs' + str(np.min(aucs)))
-                        print('irr_pos' + str(irr_pos))
-                        print('irr_neg' + str(irr_neg))
-                        if np.min(aucs) >= aucpn_range[0] and np.min(aucs) <= aucpn_range[1] and \
-                                np.min(irr_pos) > anchorSetProp and np.min(irr_neg) > anchorSetProp:
-                            mu_pos_best = np.copy(pair1.mu_pos[0])
-                            mu_neg_best = np.copy(pair1.mu_neg[0])
-                            break
-                        if np.min(aucs) < bestAUC:
-                            bestAUC = np.min(aucs)
-                            mu_pos_best = np.copy(pair1.mu_pos[0])
-                            mu_neg_best = np.copy(pair1.mu_neg[0])
-
-
-
-                    pair1.mu_pos[0] = mu_pos_best
-                    pair1.mu_neg[0] = mu_neg_best
-                    [self.NormalPNPars[i].updateDataGenerator() for i in np.arange(self.nComps)]
-                    self.updateDataGenerator()
-                    aucs = np.array([self.betweenPairAUC(i, j) for j in range(i)])
-                    irr_pos, irr_neg = self.irreducibility(irr_vec, i + 1)[0:2]
-                    #pdb.set_trace()
-                    print('after j loops')
-                    print('aucs' + str(np.min(aucs)))
-                    print('irr_pos' + str(irr_pos))
-                    print('irr_neg' + str(irr_neg))
-
-
-    def irreducibility(self, irr_vec, ncmps=None):
-        if ncmps is None:
-            ncmps = self.nComps
-        irr_p = irr_vec[1]
-        isStringent = irr_vec[2]
-        [self.NormalPNPars[i].updateDataGenerator() for i in np.arange(ncmps)]
-        posComps = []
-        negComps = []
-        for nPNPars in self.NormalPNPars[0:ncmps]:
-            posComps.append(nPNPars.dg.dist_p)
-            negComps.append(nPNPars.dg.dist_n)
-        pSamp = [pDist.rvs(size=1000) for pDist in posComps]
-        nSamp = [nDist.rvs(size=1000) for nDist in negComps]
-        p_probs = [[cmp.pdf(smp) for cmp in posComps + negComps] for smp in pSamp]
-        n_probs = [[cmp.pdf(smp) for cmp in negComps + posComps] for smp in nSamp]
-        if isStringent:
-            post_ps = [p_prob[i]/sum(p_prob) for (i, p_prob) in enumerate(p_probs)]
-            post_ns = [n_prob[i]/sum(n_prob) for (i, n_prob) in enumerate(n_probs)]
-            irr_pos = np.array([np.mean(post_p > irr_p) for post_p in post_ps])
-            irr_neg = np.array([np.mean(post_n > irr_p) for post_n in post_ns])
-        else:
-            post_ps = [[p_prob[i] / (p_prob[i] + p_prob[j]) for j in np.arange(len(p_prob)) if j != i] for (i, p_prob) in enumerate(p_probs)]
-            post_ns = [[n_prob[i] / (n_prob[i] + n_prob[j]) for j in np.arange(len(n_prob)) if j != i] for (i, n_prob) in enumerate(n_probs)]
-            irr_pos = np.array([[np.mean(pp > irr_p) for pp in post_p] for post_p in post_ps])
-            irr_neg = np.array([[np.mean(pn > irr_p) for pn in post_n] for post_n in post_ns])
-        #pdb.set_trace()
-        return irr_pos, irr_neg, post_ps, post_ns
-
-    def vecBetweenPair(self, i, j):
-        pairi = self.NormalPNPars[i]
-        pairj = self.NormalPNPars[j]
-        mu_posi = pairi.mu_pos[0]
-        mu_posj = pairj.mu_pos[0]
-        mu_negi = pairi.mu_neg[0]
-        mu_negj = pairj.mu_neg[0]
-        return (mu_posi + mu_negi)/2 - (mu_posj + mu_negj)/2
-
-    def distBetweenPair(self, i, j):
-        v = self.vecBetweenPair(i,j)
-        return np.linalg.norm(v)
-
+        self.updateDataGenerator()
 
     def betweenAllPairsAUC(self):
         #cmb = combinations(np.arange(self.nComps), 2)
@@ -628,10 +479,10 @@ class NormalMixPNParameters2:
         #pdb.set_trace()
         self.NormalPNPars[i].updateDataGenerator()
         self.NormalPNPars[j].updateDataGenerator()
-        posi = self.NormalPNPars[i].dg.dist_p
-        negi = self.NormalPNPars[i].dg.dist_n
-        posj = self.NormalPNPars[j].dg.dist_p
-        negj = self.NormalPNPars[j].dg.dist_n
+        posi = self.NormalPNPars[i].dg.dist_pos
+        negi = self.NormalPNPars[i].dg.dist_neg
+        posj = self.NormalPNPars[j].dg.dist_pos
+        negj = self.NormalPNPars[j].dg.dist_neg
         auc1 = AUCFromDistributions(posi, posj)
         auc2 = AUCFromDistributions(posi, negj)
         auc3 = AUCFromDistributions(negi, posj)
@@ -641,7 +492,7 @@ class NormalMixPNParameters2:
     def withinPairAUC(self):
         #pdb.set_trace()
         [self.NormalPNPars[i].updateDataGenerator() for i in np.arange(self.nComps)]
-        aucs = [AUCFromDistributions(pnPar.dg.dist_p, pnPar.dg.dist_n)  for pnPar in self.NormalPNPars]
+        aucs = [AUCFromDistributions(pnPar.dg.dist_pos, pnPar.dg.dist_neg)  for pnPar in self.NormalPNPars]
         return aucs
 
     def updateDataGenerator(self):
@@ -651,109 +502,13 @@ class NormalMixPNParameters2:
         self.sig_neg = [self.NormalPNPars[i].sig_neg[0] for i in np.arange(self.nComps)]
         self.dg = MVNormalMixDG(self.mu_pos, self.sig_pos, self.p_pos, self.mu_neg, self.sig_neg, self.p_neg, self.alpha)
 
-    def plotData(self, nComps=None):
-        if nComps is None:
-            nComps = self.nComps
-        self.updateDataGenerator()
-        posComps = self.dg.dist_p.comps[0:nComps]
-        negComps = self.dg.dist_n.comps[0:nComps]
-        pSamp = [pDist.rvs(size=1000) for pDist in posComps]
-        nSamp = [nDist.rvs(size=1000) for nDist in negComps]
-        [plt.scatter(s[:, 0], s[:, 1]) for s in pSamp]
-        [plt.scatter(s[:, 0], s[:, 1]) for s in nSamp]
-        plt.show()
-        posComps = [nPNPars.dg.dist_p for nPNPars in self.NormalPNPars[0:nComps]]
-        negComps = [nPNPars.dg.dist_n for nPNPars in self.NormalPNPars[0:nComps]]
-        pSamp = [pDist.rvs(size=1000) for pDist in posComps]
-        nSamp = [nDist.rvs(size=1000) for nDist in negComps]
-        [plt.scatter(s[:, 0], s[:, 1]) for s in pSamp]
-        [plt.scatter(s[:, 0], s[:, 1]) for s in nSamp]
-        plt.show()
-
-    def plotCIEllipse(self, compsDict=None, ax=None):
-        if compsDict is None:
-            compsDict = {'pos': [i for i in np.arange(self.nComps)], 'neg': [i for i in np.arange(self.nComps)]}
-        if ax is None:
-           fig, ax = plt.subplots()
-        posComps = self.dg.dist_p.comps
-        negComps = self.dg.dist_n.comps
-        pos_ix = compsDict['pos']
-        neg_ix = compsDict['neg']
-        posComps = [posComps[ix] for ix in pos_ix]
-        negComps = [negComps[ix] for ix in neg_ix]
-        [CIEllipse(cmp.mean, cmp.cov, ax, edgecolor='red') for cmp in posComps]
-        [CIEllipse(cmp.mean, cmp.cov, ax, edgecolor='k') for cmp in negComps]
-        pSamp = [pDist.rvs(size=100) for pDist in posComps]
-        nSamp = [nDist.rvs(size=100) for nDist in negComps]
-        [plt.scatter(s[:, 0], s[:, 1], alpha=0.5) for s in pSamp]
-        [plt.scatter(s[:, 0], s[:, 1], alpha=0.5) for s in nSamp]
-        if len(pos_ix + neg_ix)>2:
-            ax.set_title(str(compsDict))
-        elif len(pos_ix + neg_ix) == 2:
-            comps = posComps + negComps
-            auc = AUCFromDistributions(comps[0], comps[1])
-            #pdb.set_trace()
-            ax.set_title(str(compsDict)+': auc '+str(auc))
-
-        plt.show()
 
 
-
-
-    # def perturb2SatisfyMetrics(self, irr_range, aucpn_range):
-    #     [self.NormalPNPars[i].perturb2SatisfyMetrics(irr_range, aucpn_range) for i in np.arange(self.nComps)]
-    #     #pdb.set_trace()
-    #     if self.nComps > 1:
-    #         for i in np.arange(self.nComps):
-    #             pair1 = self.NormalPNPars[i]
-    #             aucs = np.array([self.betweenPairAUC(i, j) for j in range(self.nComps) if j != i])
-    #             irr_pos, irr_neg = self.irreducibility()
-    #             pdb.set_trace()
-    #             a1 = 0
-    #             a2 = 1
-    #
-    #             if np.min(aucs) < aucpn_range[0] or min(irr_pos[0:(i+1)]) < irr_range[0] or min(irr_neg[0:(i+1)]) < irr_range[0]:
-    #                 vec = np.array([2 * random() - 1 for i in np.arange(self.dim)])
-    #                 vec = 0.5 * vec / np.sqrt(self.dim)
-    #                 vec = vec / np.linalg.norm(vec)
-    #                 au = np.inf
-    #                 al = 0
-    #                 while (np.min(aucs) < aucpn_range[0] or np.min(aucs) > aucpn_range[1] or
-    #                        min(irr_pos[0:(i+1)]) < irr_range[0] or min(irr_neg[0:(i+1)]) < irr_range[0]) and np.abs(a2-a1) > 10**-5:
-    #                     pair1.mu_pos[0] = pair1.mu_pos[0] - a1 * vec + a2 * vec
-    #                     pair1.mu_neg[0] = pair1.mu_neg[0] - a1 * vec + a2 * vec
-    #                     a1 = a2
-    #                     aucs = np.array([self.betweenPairAUC(i, j) for j in range(self.nComps) if j != i])
-    #                     irr_pos, irr_neg = self.irreducibility()
-    #                     if np.min(aucs) < aucpn_range[1] or min(irr_pos[0:(i+1)]) < irr_range[0] or min(irr_neg[0:(i+1)]) < irr_range[0]:
-    #                         al = a2
-    #                         if not np.isinf(au):
-    #                             a2 = (a2 + au)/2
-    #                         else:
-    #                             a2 = a2*2
-    #                     elif np.min(aucs) > aucpn_range[1]:
-    #                         au = a2
-    #                         a2 = (a2 + al)/2
-    #             elif np.min(aucs) > aucpn_range[1]:
-    #                 pairDist = np.array([self.distBetweenPair(i, j) for j in range(self.nComps)])
-    #                 pairDist[i] = np.inf
-    #                 ix = np.argmin(pairDist)
-    #                 vec = self.vecBetweenPair(ix, i)
-    #                 vec = vec / np.linalg.norm(vec)
-    #                 au = 0
-    #                 al = 1
-    #                 while np.min(aucs) < aucpn_range[0] and np.min(aucs) > aucpn_range[1] and np.abs(a2-a1) > 10**-5:
-    #                     pair1.mu_pos[0] = pair1.mu_pos[0] - a1 * vec + a2 * vec
-    #                     pair1.mu_neg[0] = pair1.mu_neg[0] - a1 * vec + a2 * vec
-    #                     a1 = a2
-    #                     aucs = np.array([self.betweenPairAUC(i, j) for j in range(self.nComps) if j != i])
-    #                     irr_pos, irr_neg = self.irreducibility()
-    #                     if np.min(aucs) < aucpn_range[1] or min(irr_pos[0:(i+1)]) < irr_range[0] or min(irr_neg[0:(i+1)]) < irr_range[0]:
-    #                         al = a2
-    #                         a2 = (a2 + au)/2
-    #                     elif np.min(aucs) > aucpn_range[1]:
-    #                         au = a2
-    #                         a2 = (a2 + al)/2
-    #                 #pdb.set_trace()
-    #     self.updateDataGenerator()
-
+def AUCFromDistributions(dist1, dist2):
+    dg = DataGenerator(dist1, dist2, 0.5)
+    n=5000
+    x, y = dg.pn_data(n)[0:2]
+    posterior_x = dg.pn_posterior_balanced(x)
+    fpr, tpr, thresholds = metrics.roc_curve(y, posterior_x)
+    aucpn = metrics.auc(fpr, tpr)
+    return aucpn

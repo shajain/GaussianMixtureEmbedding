@@ -2,9 +2,10 @@
 import tensorflow as tf
 import numpy as np
 from GaussianLoss.specialFunctions import PhiD
+import pdb
 
 class CWLoss:
-    def __int__(self, dim):
+    def __init__(self, dim):
         self.phiDTF = PhiD(dim, TF=True)
         self.phiD = PhiD(dim, TF=False)
 
@@ -41,13 +42,13 @@ class CWLoss:
         return loss
 
 
-def NormsAndDistancesTF(self, x):
+def NormsAndDistancesTF(x):
         norm = tf.norm(x, axis=-1, keepdims=True) ** 2
         inner = tf.matmul(x, tf.transpose(x))
         distSq = norm + tf.transpose(norm) - 2 * inner
         return norm, distSq
 
-def NormsAndDistances(self, x):
+def NormsAndDistances(x):
         norm = np.linalg.norm(x, axis=-1, keepdims=True) ** 2
         inner = np.matmul(x, np.transpose(x))
         distSq = norm + np.transpose(norm) - 2 * inner

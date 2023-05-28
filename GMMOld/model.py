@@ -3,10 +3,10 @@ import pdb
 import numpy as np
 from abc import ABC, abstractmethod
 from scipy.stats import multivariate_normal
-from GMM.estimates import  muEstimate, covEstimate, sphCovEstimate
+from GMMOld.estimates import  muEstimate, covEstimate, sphCovEstimate
 from scipy.special import logsumexp
 from sklearn.cluster import KMeans
-from GMM.utils import responsibilityAndLogp
+from GMMOld.utils import responsibilityAndLogp
 from sklearn.metrics import pairwise_distances
 
 

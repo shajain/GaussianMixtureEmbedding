@@ -160,7 +160,7 @@ class GaussianAE(AutoEncoderBasic):
         return
 
     def lossTF(self, x):
-        #lossRec = self.reconstructionLossTF(x)
+        lossRec = self.reconstructionLossTF(x)
         enc = self.normalized_encoder(x)
         encT = tf.matmul(enc, self.orth)
         #pdb.set_trace()
@@ -169,8 +169,8 @@ class GaussianAE(AutoEncoderBasic):
         #lossCorr = self.CorrelationLossTF(enc)
         #loss = lossGaussian + lossCorr
         #pdb.set_trace()
-        #loss = lossRec + lossGaussian
-        loss = lossGaussian
+        loss = lossRec + lossGaussian
+        #loss = lossGaussian
         return loss
 
     def gradients(self, data, batchSize):

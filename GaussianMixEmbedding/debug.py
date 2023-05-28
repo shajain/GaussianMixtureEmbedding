@@ -36,8 +36,9 @@ class Debug:
 
 
 
-    def lossPlot(self):
-        ae = self.autoEncoders[-1]
+    def lossPlot(self, ae=None):
+        if ae is None:
+            ae = self.autoEncoders[-1]
         loss, recLoss, gaussLoss = ae.loss(self.data)[0:3]
         self.loss = np.append(self.loss, loss)
         #pdb.set_trace()
@@ -54,22 +55,25 @@ class Debug:
         sp.sortedplot(self.GaussianLossTrue, label='GaussianLossTrue', ax=self.axs[0, 2])
 
 
-    def reconstructionPlot(self):
-        xx = self.autoEncoders[-1].reconstruction(self.x)
+    def reconstructionPlot(self, ae=None):
+        if ae is None:
+            ae = self.autoEncoders[-1]
+        xx = ae.reconstruction(self.x)
         input_dim = xx.shape[1]
         [sp.sortedplot(self.x[i:i+1], xx[i:i+1], label='current', ax=self.axs[0, 3]) for i in np.arange(input_dim)]
         # if len(self.autoEncoders) > 1:
         #     xxPrev = self.autoEncoders[-2].reconstruction(self.x)
         #     sp.sortedplot(self.x, xxPrev, label='previous', ax=self.axs[1, 0])
 
-    def gaussianPlot(self):
-        ae = self.autoEncoders[-1]
+    def gaussianPlot(self, ae=None):
+        if ae is None:
+            ae = self.autoEncoders[-1]
         size = ae.batchSize
         # x = self.data['x']
         # R = ae.responsibility(x)
         # Enc1 = [ae.normalized_encoding(x, r) for r in R.T]
-        u, probs, Enc = self.autoEncoders[-1].kdeWrapper(self.data, size=size)
-        lDims = self.autoEncoders[-1].latent_dim
+        u, probs, Enc = ae.kdeWrapper(self.data, size=size)
+        lDims = ae.latent_dim
         for (i,(enc, p))in enumerate(zip(Enc, probs)):
             dims = np.random.choice(lDims, 2, replace=False)
             ix = dims[0]
@@ -117,12 +121,13 @@ class Debug:
     #         self.axs[2, k].scatter(enc[:, i], enc[:, j])
     #         self.axs[2, k].set_title('Dim' + str(i) + ' vs ' + str(j))
 
-    def scatterPlot(self):
-        lDims = self.autoEncoders[-1].latent_dim
+    def scatterPlot(self, ae=None):
+        if ae is None:
+            ae = self.autoEncoders[-1]
+        lDims = ae.latent_dim
         dims = np.random.choice(lDims, (2,2), replace=True)
         x = self.data['x']
         n = x.shape[0]
-        ae = self.autoEncoders[-1]
         size = ae.batchSize
         ix = np.random.choice(n, size, replace=True)
         x = x[ix, :]
@@ -149,17 +154,21 @@ class Debug:
 
 
 
-    def afterUpdate(self, loss):
+    def afterUpdate(self, ae=None):
         print('after Update')
-        self.nComps = self.autoEncoders[-1].nComps
+        if ae is None:
+            ae = self.autoEncoders[-1]
+        self.nComps = ae.nComps
+
         fig, axs = sp.subplots(self.nComps + 2, 4, figsize=(10, 12))
         self.fig = fig
         self.axs = axs
 
-        self.lossPlot()
-        self.reconstructionPlot()
-        self.gaussianPlot()
-        self.scatterPlot()
+        self.lossPlot(ae)
+        self.reconstructionPlot(ae)
+        self.gaussianPlot(ae)
+        self.scatterPlot(ae)
+        #pdb.set_trace()
         self.displayPlots()
         # sp.show()
 
@@ -182,6 +191,7 @@ class Debug:
         sp.close( )
         for axs in self.axs.reshape(-1):
             axs.clear( )
+
         # fig, axs = sp.subplots(self.nComps + 2, 4, figsize=(10, 12))
         # self.fig = fig
         # self.axs = axs

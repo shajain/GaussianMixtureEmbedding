@@ -40,6 +40,7 @@ class GaussianMixAE(GaussianAE):
 
     def GaussianPosteriorLossTF(self, Enc, R):
         gaussR = self.gaussianResponsibilityTF(Enc, R)
+        #pdb.set_trace()
         loss = tf.reduce_mean((R-gaussR)**2)
         #pdb.set_trace()
         return loss
@@ -130,6 +131,7 @@ class GaussianMixAE(GaussianAE):
         #loss = lossRec + lossGaussian
         #loss = lossGaussian
         return loss
+
 
     def gradients(self, data, batchSize):
         #pdb.set_trace()
@@ -259,7 +261,7 @@ class GaussianMixAE(GaussianAE):
         #pdb.set_trace()
         gaussianR = [a*d for (a,d) in zip(props,Dens)]
         denom = tf.add_n(gaussianR)
-        gaussianR = [r/denom for r in gaussianR]
+        gaussianR = tf.concat([r/denom for r in gaussianR], axis=1)
         return gaussianR
 
     def getTrainableVariables(self):

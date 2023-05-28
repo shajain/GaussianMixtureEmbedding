@@ -9,6 +9,7 @@ from sklearn.datasets import make_spd_matrix as spd
 from scipy.stats import dirichlet
 from sklearn import metrics
 from scipy.stats import multivariate_normal as mvn
+import copy as cp
 from matplotlib import pyplot as plt
 from mpl_toolkits import mplot3d
 import pdb as pdb
@@ -22,6 +23,10 @@ class DataGenerator:
         self.dist_p = dist_p
         self.dist_n = dist_n
         self.alpha = alpha
+        #self.n_p = n_p
+        #self.n_u = n_u
+        # self.n_up = np.cast['int32'](np.floor(n_u * alpha))
+        # self.n_un = self.n_u - self.n_up
 
         
     def data_pos(self, n):
@@ -31,7 +36,7 @@ class DataGenerator:
             x = np.reshape(x, newshape=(n, -1))
         else:
             #pdb.set_trace()
-            x = np.reshape(self.dist_p.rvs(size=(n,1)), newshape=(n, -1))
+            x = np.reshape(self.dist_p.rvs(size=n), newshape=(n, -1))
             c = np.ones((x.shape[0], 1))
         return x, c
 
@@ -40,7 +45,7 @@ class DataGenerator:
             x, c = self.dist_n.rvsCompInfo(size=n)
             x = np.reshape(x, newshape=(n, -1))
         else:
-            x = np.reshape(self.dist_n.rvs(size=(n, 1)), newshape=(n, -1))
+            x = np.reshape(self.dist_n.rvs(size=n), newshape=(n, -1))
             c = np.ones((x.shape[0], 1))
         return x, c
 
@@ -84,7 +89,7 @@ class DataGenerator:
     def pn_data(self, n, alpha=None):
         if alpha == None:
             alpha = self.alpha
-        n_p = np.cast['int32'](np.floor(n * alpha))
+        n_p = (np.cast['int32'](np.floor(n * alpha))).item()
         n_n = n - n_p
         x_p, c_p = self.data_pos(n_p)
         x_n, c_n = self.data_neg(n_n)
@@ -129,8 +134,13 @@ class DataGenerator:
     def pn_posterior_cc(self, x):
         return self.pn_posterior(x, self.alpha)
 
+    def posterior(self, x):
+        return self.pn_posterior_cc(x)
+
     def pn_posterior_balanced(self, x):
         return self.pn_posterior(x, 0.5)
+
+
 
 
 class GaussianDG(DataGenerator):
@@ -144,9 +154,10 @@ class GaussianDG(DataGenerator):
 class UniformDG(DataGenerator):
 
     def __init__(self, mu, sig, alpha):
+        self.alpha
         self.dist_p = uniform(loc=0, scale=1)
         self.dist_n = uniform(loc=mu, scale=sig)
-        super(UniformDG, self).__init__(dist_p=self.dist_p, dist_n=self.dist_n, alpha=alpha)
+        super(UniformDG, self).__init__(dist_p=self.dist_p, dist_n=self.dist_n, alpha=self.alpha)
 
 
 class MixtureDG(DataGenerator):
@@ -158,14 +169,6 @@ class MixtureDG(DataGenerator):
         mix = mixture(comps, mProp)
         R = mix.responsibility(x)
         return R
-
-    def updateMixProps(self, alpha=None, p_pos=None, p_neg=None):
-        if p_pos is not None:
-            self.dist_p = mixture(self.dist_p.comps, p_pos)
-        if p_neg is not None:
-            self.dist_n = mixture(self.dist_n.comps, p_neg)
-        if alpha is not None:
-            self.alpha = alpha
 
 class NormalMixDG(MixtureDG):
 
@@ -180,11 +183,10 @@ class NormalMixDG(MixtureDG):
 class MVNormalMixDG(MixtureDG):
 
     def __init__(self, mu_pos, sig_pos, p_pos, mu_neg, sig_neg, p_neg, alpha):
-        components_pos = [mvn(mean=mu, cov=sig) for (mu, sig) in zip(mu_pos, sig_pos)]
-        components_neg = [mvn(mean=mu, cov=sig) for (mu, sig) in zip(mu_neg, sig_neg)]
-        dist_p = mixture(components_pos, p_pos)
-        dist_n = mixture(components_neg, p_neg)
-        super(MVNormalMixDG, self).__init__(dist_p=dist_p, dist_n=dist_n, alpha=alpha)
-
+        self.components_pos = [mvn(mean=mu, cov=sig) for (mu, sig) in zip(mu_pos, sig_pos)]
+        self.components_neg = [mvn(mean=mu, cov=sig) for (mu, sig) in zip(mu_neg, sig_neg)]
+        dist_pos = mixture(self.components_pos, p_pos)
+        dist_neg = mixture(self.components_neg, p_neg)
+        super(MVNormalMixDG, self).__init__(dist_p=dist_pos, dist_n=dist_neg, alpha=alpha)
 
 

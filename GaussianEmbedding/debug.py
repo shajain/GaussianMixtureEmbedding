@@ -104,7 +104,7 @@ class Debug:
 
 
 
-    def afterUpdate(self, loss):
+    def afterUpdate(self):
         print('after Update')
         self.lossPlot()
         self.reconstructionPlot()

@@ -59,8 +59,8 @@ class AbstractAutoEncoderWithLoss(ABC):
         return self.decoder.predict(e)
 
     def getTrainableVariables(self):
-        #return self.encoder.trainable_variables
-        return self.encoder.trainable_variables + self.decoder.trainable_variables
+        return self.encoder.trainable_variables
+        #return self.encoder.trainable_variables + self.decoder.trainable_variables
 
     @abstractmethod
     def gradients(self, data, batchSize):
@@ -97,6 +97,7 @@ class AutoEncoderBasic(AbstractAutoEncoderWithLoss):
         encoding = self.encoder(x)
         xx = self.decoder(encoding)
         loss = tf.reduce_mean(tf.reduce_sum((x - xx) ** 2, axis=1))
+        #pdb.set_trace()
         return loss
 
     def lossTF(self, x):
@@ -118,6 +119,7 @@ class AutoEncoderBasic(AbstractAutoEncoderWithLoss):
     def reconstructionLoss(self, x):
         xx = self.reconstruction(x)
         loss = np.mean(np.sum((x - xx) ** 2, axis=1))
+        #pdb.set_trace()
         return loss
 
     def loss(self, data):

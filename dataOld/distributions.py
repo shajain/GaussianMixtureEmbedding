@@ -33,8 +33,6 @@ class mixture:
             rvs = comp.rvs(size=[s, 1])
             if s == 1:
                 rvs = np.expand_dims(rvs, axis=0)
-            if dim == 1:
-                rvs = rvs.reshape((np.size(rvs), 1))
             x = np.concatenate((x, rvs), axis=0)
         #pdb.set_trace()
         return x
@@ -51,11 +49,11 @@ class mixture:
         y = np.empty([0, 1])
         k = 0
         for (s, comp) in zip(sizes, self.comps):
-            rvs = comp.rvs(size=[s, 1])
+            rvs = comp.rvs(size=s)
+            rvs = rvs.reshape((s, x.shape[1]))
+            #pdb.set_trace()
             if s == 1:
                 rvs = np.expand_dims(rvs, axis=0)
-            if dim == 1:
-                rvs = rvs.reshape((np.size(rvs), 1))
             x = np.concatenate((x, rvs), axis=0)
             #x = np.concatenate((x, comp.rvs(size=[s, 1])), axis=0)
             y = np.concatenate((y, np.zeros([s, 1]) + k), axis=0)
@@ -72,5 +70,6 @@ class mixture:
         R = [a * d for (a, d) in zip(self.mixProp, R)]
         denom = sum(R)[:, None]
         R = np.hstack([r[:, None]/denom for r in R])
-        #pdb.set_trace()
         return R
+
+

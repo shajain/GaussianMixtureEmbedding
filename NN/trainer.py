@@ -54,7 +54,8 @@ class Trainer:
         if hasattr(self, 'debug'):
             self.nets.append(self.nnLoss.copy( ))
             #pdb.set_trace()
-            self.debug.afterUpdate(self.loss[-1])
+            #self.debug.afterUpdate(self.loss[-1])
+            self.debug.afterUpdate()
 
 
 
@@ -73,7 +74,7 @@ class AlternatingTrainer:
         #pdb.set_trace()
         #self.debug.attachData(x,y)
 
-    def attachDebugger(self, debug):
+    def attachVisualizer(self, debug):
         self.debug = debug
         self.muNets = []
         self.sigmaNets = []

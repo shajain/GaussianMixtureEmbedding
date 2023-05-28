@@ -6,7 +6,7 @@ import numpy as np
 from KDE.kde import bandwidth
 from KDE.kde import kde
 from GaussianEmbedding.GaussianAE import GaussianAE
-from GMM.classes import GMM
+from GMMOld.classes import GMM
 from scipy.stats import norm
 import tensorflow_probability as tfp
 
@@ -17,8 +17,8 @@ class GaussianMixAE(GaussianAE):
         super(GaussianMixAE, self).__init__(input_dim, latent_dim, **kwargs)
         self.bws = [bandwidth(self.batchSize)]*nComps
         self.nComps = nComps
-        if 'GMM' in kwargs:
-            self.GMM = kwargs['GMM']
+        if 'GMMOld' in kwargs:
+            self.GMM = kwargs['GMMOld']
         else:
             self.GMM = GMM(nComps, latent_dim, GaussianMixAE.iterGMM, spherical=True)
 
@@ -148,7 +148,7 @@ class GaussianMixAE(GaussianAE):
         kwargs['encoder'] = self.copyEncoder()
         kwargs['decoder'] = self.copyDecoder()
         #pdb.set_trace()
-        kwargs['GMM'] = self.GMM.copy()
+        kwargs['GMMOld'] = self.GMM.copy()
         GMAE = GaussianMixAE(self.input_dim, self.latent_dim, self.nComps, **kwargs)
         GMAE.updateGMMPars()
         return GMAE
