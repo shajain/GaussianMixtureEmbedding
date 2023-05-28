@@ -40,16 +40,17 @@ class GMMFitting:
         nDims = 2
         nCompPerClass = 1
         parGen = NormalMixPNParameters2(nDims, nCompPerClass)
-        irr_range = [0.01, 1]
+        irr_range = [0.01, 0.9, True]
         auc_pn = [0.9, 1]
-        parGen.perturb2SatisfyMetrics(irr_range, auc_pn)
+        parGen.perturb2SatisfyMetrics(auc_pn, irr_range)
         dg = parGen.dg
         dg.alpha = 0.3
-        x1 = dg.pn_data(n*2)[0]
+        x1 = dg.pn_data(n * 2)[0]
         dg2 = cp.deepcopy(dg)
         dg2.alpha = 0.7
         x2 = dg2.pn_data(n * 2)[0]
         X = [x1, x2]
+        # pdb.set_trace()
 
         DG = [dg, dg2]
 

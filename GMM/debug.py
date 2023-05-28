@@ -24,7 +24,6 @@ class Debug:
         self.postTrue = [dg.pn_posterior(x) for (x, dg) in zip(self.X, DG)]
         #pdb.set_trace()
         self.RTrue = [dg.responsibility(x) for (x, dg) in zip(self.X, DG)]
-        self.RTrue = [np.hstack([r[:,None] for r in RTrue[0]+RTrue[1]]) for RTrue in self.RTrue]
         self.nMix = len(X)
 
     def attachGMM(self, gmm):
