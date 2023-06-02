@@ -112,7 +112,7 @@ class GMM:
         self.fit(X, maxIter)
 
     def fit(self, X, maxIter=None):
-        if not self.initParRan:
+        if not self.initParRan or self.dataOOD(X):
             self.initPar(X)
         if maxIter is None:
             maxIter = self.maxIter
@@ -121,6 +121,16 @@ class GMM:
             self.run(X)
             self.afterUpdate()
             self.iter+=1
+
+    def dataOOD(self, X):
+        maxDensPerCmp = np.array([np.max(np.vstack([cmp.pdf(x) for x in  X])) for cmp in self.compDist])
+        max = np.max(maxDensPerCmp)
+        min = np.min(maxDensPerCmp)
+        oodFlag = min/max < 10**-3
+        self.oddFlag = oodFlag
+        if self.oddFlag:
+            print('OOD input to GMM: Reinitializing GMM parameters')
+        return oodFlag
 
 
     def run(self, X):

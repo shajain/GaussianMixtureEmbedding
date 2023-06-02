@@ -49,6 +49,8 @@ class GMMFitting:
         dg2 = cp.deepcopy(dg)
         dg2.alpha = 0.7
         x2 = dg2.pn_data(n * 2)[0]
+        # You can run GMM with any number of samples.
+        # e.g., for 3 samples X = [x1, x2, x3]
         X = [x1, x2]
         # pdb.set_trace()
 
@@ -57,6 +59,8 @@ class GMMFitting:
         nMix = len(X)
         nComps = nCompPerClass*2
         cDist = [MVN(spherical=False) for _ in range(nComps)]
+        # The ith entry of cMemPerSample should contain all the component indexes that are present
+        # in sample i
         cMemPerSample = [np.arange(nComps) for _ in range(nMix)]
         fitting = GMMFitting(nComps, nDims, compDist=cDist, nMix=nMix, cMemPerSample=cMemPerSample)
         fitting.initDebug(X, DG)
